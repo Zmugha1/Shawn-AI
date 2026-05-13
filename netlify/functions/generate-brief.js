@@ -213,7 +213,16 @@ OUTPUT FORMAT -- respond with valid JSON only, no markdown, no preamble:
       // Try to extract JSON if wrapped in markdown
       const jsonMatch = rawText.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
-        brief = JSON.parse(jsonMatch[0])
+        try {
+          brief = JSON.parse(jsonMatch[0])
+        } catch {
+          // JSON is malformed -- clean it and try again
+          const cleaned = jsonMatch[0]
+            .replace(/,\s*}/g, '}')
+            .replace(/,\s*]/g, ']')
+            .replace(/[\x00-\x1F\x7F]/g, ' ')
+          brief = JSON.parse(cleaned)
+        }
       } else {
         throw new Error('Could not parse brief JSON from Anthropic response')
       }
