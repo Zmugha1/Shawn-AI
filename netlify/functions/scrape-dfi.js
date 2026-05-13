@@ -2,7 +2,7 @@
 // Scrapes Wisconsin DFI Corporate Records -- public, no key needed
 // wdfi.org/apps/corpsearch
 
-export const handler = async (event) => {
+exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',

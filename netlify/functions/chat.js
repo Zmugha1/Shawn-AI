@@ -1,7 +1,7 @@
 // netlify/functions/chat.js
 // Anthropic chat with Shawn's STZ context preloaded
 
-export const handler = async (event) => {
+exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',

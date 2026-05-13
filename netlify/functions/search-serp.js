@@ -2,7 +2,7 @@
 // SerpAPI multi-engine search
 // Handles: Google Search, Google News, Google Maps, Maps Reviews, Facebook Profile
 
-export const handler = async (event) => {
+exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',

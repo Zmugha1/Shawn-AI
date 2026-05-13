@@ -2,7 +2,7 @@
 // Scrapes Wisconsin Circuit Court Access (CCAP) -- public record, no key needed
 // wcca.wicourts.gov
 
-export const handler = async (event) => {
+exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
