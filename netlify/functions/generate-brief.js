@@ -186,7 +186,7 @@ OUTPUT FORMAT -- respond with valid JSON only, no markdown, no preamble:
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4000,
+        max_tokens: 1500,
         system: systemPrompt,
         messages: [
           {
@@ -195,7 +195,7 @@ OUTPUT FORMAT -- respond with valid JSON only, no markdown, no preamble:
           }
         ]
       }),
-      signal: AbortSignal.timeout(25000)
+      signal: AbortSignal.timeout(20000)
     })
 
     if (!response.ok) {
