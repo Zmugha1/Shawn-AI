@@ -52,7 +52,7 @@ export default function BuildPage() {
     // Step 0: CCAP
     setStep(0, 'active')
     try {
-      const res = await fetch('/.netlify/functions/scrape-ccap', {
+      const res = await fetch('https://shawnintel.netlify.app/.netlify/functions/scrape-ccap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ firstName, lastName })
@@ -64,7 +64,7 @@ export default function BuildPage() {
     // Step 1: DFI
     setStep(1, 'active')
     try {
-      const res = await fetch('/.netlify/functions/scrape-dfi', {
+      const res = await fetch('https://shawnintel.netlify.app/.netlify/functions/scrape-dfi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ businessName: prospect.businessName, personName: prospect.fullName })
@@ -79,7 +79,7 @@ export default function BuildPage() {
     setStep(4, 'active')
     setStep(5, 'active')
     try {
-      const res = await fetch('/.netlify/functions/search-serp', {
+      const res = await fetch('https://shawnintel.netlify.app/.netlify/functions/search-serp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -107,7 +107,7 @@ export default function BuildPage() {
     // Step 6: RSS
     setStep(6, 'active')
     try {
-      const res = await fetch('/.netlify/functions/scrape-rss', {
+      const res = await fetch('https://shawnintel.netlify.app/.netlify/functions/scrape-rss', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
