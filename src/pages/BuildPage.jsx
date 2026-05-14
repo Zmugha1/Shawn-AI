@@ -14,6 +14,7 @@ const STEPS = [
   { label: 'Reading Wisconsin RSS feeds', src: 'RSS -- Free', key: 'rss' },
   { label: 'Deep scraping court and business records', src: 'Firecrawl', key: 'firecrawl' },
   { label: 'Searching unclaimed property, licenses, UCC filings', src: 'Wisconsin Public Records', key: 'wisconsin' },
+  { label: 'Enriching person profile', src: 'People Data Labs + FINRA', key: 'enrich' },
   { label: 'Applying your 10 criteria', src: 'STZ Layer', key: 'stz' },
   { label: 'Generating your brief', src: 'Anthropic API', key: 'brief' }
 ]
@@ -195,13 +196,40 @@ export default function BuildPage() {
       setStep(11, 'error')
     }
 
-    // Step 12: STZ layer applied (local, instant)
+    // Person enrichment -- PDL + FINRA
     setStep(12, 'active')
-    await new Promise(r => setTimeout(r, 600))
-    setStep(12, 'done')
+    try {
+      const nameParts3 = prospect.fullName.trim().split(' ')
+      const res = await fetch('https://shawnintel.netlify.app/.netlify/functions/enrich-person', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: nameParts3[0],
+          lastName: nameParts3.slice(1).join(' ') || nameParts3[0],
+          city: prospect.city
+        })
+      })
+      if (!res.ok) {
+        scrapedData.enrichment = {}
+        setStep(12, 'error')
+      } else {
+        const data = await res.json()
+        scrapedData.enrichment = data.results || {}
+        setStep(12, 'done')
+      }
+    } catch (err) {
+      console.error('Person enrichment failed:', err.message)
+      scrapedData.enrichment = {}
+      setStep(12, 'error')
+    }
 
-    // Step 13: Generate brief -- called directly from browser, no timeout limit
+    // Step 13: STZ layer applied (local, instant)
     setStep(13, 'active')
+    await new Promise(r => setTimeout(r, 600))
+    setStep(13, 'done')
+
+    // Step 14: Generate brief -- called directly from browser, no timeout limit
+    setStep(14, 'active')
     try {
       const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY
 
@@ -363,6 +391,30 @@ Business entities: ${JSON.stringify(wi.openCorporates.businessEntities).substrin
         }
       }
 
+      // PDL person enrichment
+      if (scrapedData?.enrichment?.pdl?.status === 'found') {
+        const p = scrapedData.enrichment.pdl.profile
+        const workHistory = (p.workHistory || [])
+          .map(w => `${w.title} at ${w.company} (${w.start} to ${w.end})`)
+          .join(', ')
+        const education = (p.education || [])
+          .map(e => `${e.degree || ''} ${e.field || ''} from ${e.school}`)
+          .join(', ')
+        contextParts.push(`PEOPLE DATA LABS VERIFIED PROFILE:
+Current role: ${p.currentJobTitle} at ${p.currentCompany}
+Industry: ${p.currentIndustry}
+Location: ${p.location}
+Work history: ${workHistory}
+Education: ${education}
+Skills: ${(p.skills || []).join(', ')}
+Interests: ${(p.interests || []).join(', ')}`)
+      }
+
+      if (scrapedData?.enrichment?.finra?.status === 'registered') {
+        contextParts.push(`FINRA BROKERCHECK REGISTERED:
+${JSON.stringify(scrapedData.enrichment.finra.profiles).substring(0, 400)}`)
+      }
+
       const systemPrompt = `You are Shawn Intel, pre-meeting intelligence for Shawn, a CFP with 30 years experience in Wisconsin. Apply his 10 criteria. Be concise -- 2 sentences max per criterion.
 
 CRITERIA: 1.Comfort/Intent 2.Hidden Pain 3.Background/CCAP 4.Mutual Connections 5.Business Context 6.Family/Household 7.Decision Style 8.Right Analogy 9.What to Listen For 10.What Not to Assume
@@ -377,7 +429,7 @@ CRITICAL ACCURACY RULE:
 You ONLY use information explicitly provided in the context below.
 You NEVER invent, assume, or hallucinate details about a person.
 If a detail is not in the context, say "unknown -- verify with prospect."
-You NEVER describe someone as a weatherman, actor, athlete, or any 
+You NEVER describe someone as a weatherman, actor, athlete, or any
 other profession unless that exact information appears in the context.
 If the context is thin, produce a thin brief with honest gaps flagged.
 A brief with honest gaps is better than a brief with invented details.
@@ -426,11 +478,11 @@ OUTPUT: Valid JSON only. No markdown. No extra text before or after.
       localStorage.setItem('prospects', JSON.stringify(savedProspects))
 
       clearInterval(timer)
-      setStep(13, 'done')
+      setStep(14, 'done')
       setTimeout(() => navigate(`/brief/${prospect.id}`), 600)
 
     } catch (err) {
-      setStep(13, 'error')
+      setStep(14, 'error')
       setError(err.message)
       clearInterval(timer)
     }
