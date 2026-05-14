@@ -24,7 +24,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { firstName, lastName, fullName, businessName, linkedinUrl, companyUrl } = JSON.parse(event.body || '{}')
+    const { firstName, lastName, fullName, businessName, linkedinUrl, companyUrl, facebookUrl } = JSON.parse(event.body || '{}')
     // Clean businessName -- strip URLs if accidentally passed
     const cleanBusinessName = businessName && !businessName.startsWith('http') ? businessName : null
 
@@ -150,22 +150,131 @@ exports.handler = async (event) => {
       )
     }
 
-    // Firecrawl Search -- general web presence
+    // Multi-platform deep search -- hunt for the real person
     tasks.push(
-      firecrawlSearch(`${fullName} Wisconsin financial planning professional background`)
-        .then(data => {
-          results.webSearch = {
-            source: 'Firecrawl Web Search',
-            status: data?.length > 0 ? 'results_found' : 'no_results',
-            results: (data || []).slice(0, 4).map(r => ({
-              title: r.title,
-              url: r.url,
-              description: r.description,
-              content: r.markdown?.substring(0, 300)
-            })),
-            confidence: 'medium'
+      Promise.allSettled([
+
+        // Search 1 -- General identity and background
+        firecrawlSearch(`"${fullName}" Wisconsin background career history`),
+
+        // Search 2 -- Military and government service
+        firecrawlSearch(`"${fullName}" military army navy veteran service`),
+
+        // Search 3 -- Media appearances and press
+        firecrawlSearch(`"${fullName}" interview podcast speaker conference`),
+
+        // Search 4 -- Creative and personal interests
+        firecrawlSearch(`"${fullName}" photography art music hobby passion`),
+
+        // Search 5 -- Entertainment and public profiles
+        firecrawlSearch(`"${fullName}" actor film IMDB performance`),
+
+        // Search 6 -- International background
+        firecrawlSearch(`"${fullName}" international abroad overseas travel lived`),
+
+        // Search 7 -- Academic and research
+        firecrawlSearch(`"${fullName}" research published professor university`),
+
+        // Search 8 -- Community and civic
+        firecrawlSearch(`"${fullName}" Wisconsin chamber community board nonprofit volunteer`)
+
+      ]).then(searchResults => {
+        const allResults = []
+        searchResults.forEach((r, i) => {
+          if (r.status === 'fulfilled' && r.value?.length > 0) {
+            r.value.slice(0, 2).forEach(item => {
+              allResults.push({
+                searchCategory: ['General', 'Military', 'Media', 'Creative', 'Entertainment', 'International', 'Academic', 'Community'][i],
+                title: item.title,
+                url: item.url,
+                description: item.description,
+                content: item.markdown?.substring(0, 400)
+              })
+            })
           }
         })
+
+        results.webSearch = {
+          source: 'Firecrawl Deep Web Search',
+          status: allResults.length > 0 ? 'results_found' : 'no_results',
+          totalResults: allResults.length,
+          results: allResults,
+          confidence: 'medium'
+        }
+      })
+    )
+
+    // IMDB -- actor and public figure search
+    tasks.push(
+      firecrawlScrape(
+        `https://www.imdb.com/find/?q=${encodeURIComponent(fullName)}&s=nm`,
+        `Find any IMDB entries for "${fullName}". Extract: name, known for, profession, any notable credits or appearances. If none found say "Not found on IMDB".`
+      ).then(data => {
+        if (data && data !== 'Not found on IMDB') {
+          results.imdb = {
+            source: 'IMDB',
+            status: 'found',
+            data,
+            confidence: 'high',
+            wowFactor: 'HIGH -- unexpected creative side nobody else will know about'
+          }
+        }
+      })
+    )
+
+    // Fine Art America -- artist and photographer search
+    tasks.push(
+      firecrawlScrape(
+        `https://fineartamerica.com/profiles/${firstName.toLowerCase()}-${lastName.toLowerCase()}`,
+        `Find any art or photography work by "${fullName}". Extract: bio, artistic style, subjects photographed, number of works, any notable collections or sales. If not found say "Not found".`
+      ).then(data => {
+        if (data && data !== 'Not found') {
+          results.fineArt = {
+            source: 'Fine Art America',
+            status: 'found',
+            data,
+            confidence: 'high',
+            wowFactor: 'HIGH -- personal passion that creates instant connection'
+          }
+        }
+      })
+    )
+
+    // Facebook deeper search via Firecrawl
+    if (facebookUrl) {
+      tasks.push(
+        firecrawlScrape(
+          facebookUrl,
+          `Extract everything publicly visible on this Facebook profile for "${fullName}": current location, hometown, work history, education, family members mentioned, hobbies and interests, recent public posts, groups, life events. Be thorough -- extract every public detail.`
+        ).then(data => {
+          if (data) {
+            results.facebookDeep = {
+              source: 'Facebook Profile (deep)',
+              status: 'scraped',
+              data: typeof data === 'string' ? data.substring(0, 1000) : JSON.stringify(data).substring(0, 1000),
+              confidence: 'high',
+              wowFactor: 'HIGH -- family details, hobbies, life events nobody else researches'
+            }
+          }
+        })
+      )
+    }
+
+    // Geneva College / University faculty page search
+    tasks.push(
+      firecrawlScrape(
+        `https://www.google.com/search?q="${encodeURIComponent(fullName)}" faculty professor bio site:edu`,
+        `Find any university faculty bio for "${fullName}". Extract: full biography, academic background, research interests, publications, courses taught, professional history before academia.`
+      ).then(data => {
+        if (data) {
+          results.facultyBio = {
+            source: 'University Faculty Bio',
+            status: 'scraped',
+            data: typeof data === 'string' ? data.substring(0, 800) : JSON.stringify(data).substring(0, 800),
+            confidence: 'medium'
+          }
+        }
+      })
     )
 
     await Promise.allSettled(tasks)
