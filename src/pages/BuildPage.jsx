@@ -6,8 +6,11 @@ const STEPS = [
   { label: 'Searching business registrations', src: 'Wisconsin DFI', key: 'dfi' },
   { label: 'Scanning Google presence', src: 'SerpAPI -- Google', key: 'google' },
   { label: 'Checking recent news', src: 'SerpAPI -- News', key: 'news' },
-  { label: 'Searching business reviews', src: 'SerpAPI -- Maps + Yelp', key: 'maps' },
-  { label: 'Scanning Facebook profile', src: 'SerpAPI -- Facebook', key: 'facebook' },
+  { label: 'Finding LinkedIn profile', src: 'SerpAPI -- LinkedIn', key: 'linkedin' },
+  { label: 'Searching business reviews', src: 'SerpAPI -- Maps + Reviews', key: 'maps' },
+  { label: 'Scanning Facebook presence', src: 'SerpAPI -- Facebook', key: 'facebook' },
+  { label: 'Checking YouTube presence', src: 'SerpAPI -- YouTube', key: 'youtube' },
+  { label: 'Scanning community events', src: 'SerpAPI -- Events', key: 'events' },
   { label: 'Reading Wisconsin RSS feeds', src: 'RSS -- Free', key: 'rss' },
   { label: 'Applying your 10 criteria', src: 'STZ Layer', key: 'stz' },
   { label: 'Generating your brief', src: 'Anthropic API', key: 'brief' }
@@ -73,11 +76,14 @@ export default function BuildPage() {
       setStep(1, 'done')
     } catch { setStep(1, 'error'); scrapedData.dfi = null }
 
-    // Steps 2-5: SerpAPI (parallel)
+    // Steps 2-8: SerpAPI (parallel)
     setStep(2, 'active')
     setStep(3, 'active')
     setStep(4, 'active')
     setStep(5, 'active')
+    setStep(6, 'active')
+    setStep(7, 'active')
+    setStep(8, 'active')
     try {
       const res = await fetch('https://shawnintel.netlify.app/.netlify/functions/search-serp', {
         method: 'POST',
@@ -96,16 +102,22 @@ export default function BuildPage() {
       setStep(3, 'done')
       setStep(4, 'done')
       setStep(5, 'done')
+      setStep(6, 'done')
+      setStep(7, 'done')
+      setStep(8, 'done')
     } catch {
       setStep(2, 'error')
       setStep(3, 'error')
       setStep(4, 'error')
       setStep(5, 'error')
+      setStep(6, 'error')
+      setStep(7, 'error')
+      setStep(8, 'error')
       scrapedData.serp = null
     }
 
-    // Step 6: RSS
-    setStep(6, 'active')
+    // Step 9: RSS
+    setStep(9, 'active')
     try {
       const res = await fetch('https://shawnintel.netlify.app/.netlify/functions/scrape-rss', {
         method: 'POST',
@@ -117,16 +129,16 @@ export default function BuildPage() {
         })
       })
       scrapedData.rss = await res.json()
-      setStep(6, 'done')
-    } catch { setStep(6, 'error'); scrapedData.rss = null }
+      setStep(9, 'done')
+    } catch { setStep(9, 'error'); scrapedData.rss = null }
 
-    // Step 7: STZ layer applied (local, instant)
-    setStep(7, 'active')
+    // Step 10: STZ layer applied (local, instant)
+    setStep(10, 'active')
     await new Promise(r => setTimeout(r, 600))
-    setStep(7, 'done')
+    setStep(10, 'done')
 
-    // Step 8: Generate brief -- called directly from browser, no timeout limit
-    setStep(8, 'active')
+    // Step 11: Generate brief -- called directly from browser, no timeout limit
+    setStep(11, 'active')
     try {
       const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY
 
@@ -215,11 +227,11 @@ OUTPUT: Valid JSON only. No markdown. No extra text before or after.
       localStorage.setItem('prospects', JSON.stringify(savedProspects))
 
       clearInterval(timer)
-      setStep(8, 'done')
+      setStep(11, 'done')
       setTimeout(() => navigate(`/brief/${prospect.id}`), 600)
 
     } catch (err) {
-      setStep(8, 'error')
+      setStep(11, 'error')
       setError(err.message)
       clearInterval(timer)
     }

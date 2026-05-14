@@ -107,13 +107,33 @@ exports.handler = async (event) => {
       }).catch(() => { results.news = { source: 'Google News', error: true } })
     )
 
-    // 3. Google Maps -- business owners
-    if (businessName || archetype?.includes('Business') || archetype?.includes('Restaurant')) {
-      const mapQuery = businessName || `${fullName} ${location}`
+    // 3. LinkedIn via Google
+    searches.push(
+      serpFetch({
+        engine: 'google',
+        q: `site:linkedin.com/in "${fullName}" ${location}`,
+        num: 3
+      }).then(data => {
+        results.linkedin = {
+          source: 'LinkedIn (via Google)',
+          results: (data?.organic_results || []).slice(0, 2).map(r => ({
+            title: r.title,
+            snippet: r.snippet,
+            link: r.link
+          })),
+          confidence: 'medium',
+          note: 'Public LinkedIn profile data via Google index'
+        }
+      }).catch(() => { results.linkedin = { source: 'LinkedIn', error: true } })
+    )
+
+    // 4. Google Maps for business owners
+    if (businessName) {
+      const mapQuery = businessName || fullName
       searches.push(
         serpFetch({
           engine: 'google_maps',
-          q: mapQuery,
+          q: `${mapQuery} ${location}`,
           type: 'search'
         }).then(data => {
           const places = data?.local_results || []
@@ -126,77 +146,31 @@ exports.handler = async (event) => {
               address: p.address,
               phone: p.phone,
               type: p.type,
-              hours: p.hours
+              hours: p.hours?.schedule
             })),
             confidence: 'high'
           }
         }).catch(() => { results.maps = { source: 'Google Maps', error: true } })
       )
 
-      // 4. Yelp -- restaurant owners specifically
-      if (archetype?.includes('Restaurant')) {
-        const yelpQuery = businessName || fullName
-        searches.push(
-          serpFetch({
-            engine: 'yelp',
-            find_desc: yelpQuery,
-            find_loc: location
-          }).then(data => {
-            results.yelp = {
-              source: 'Yelp',
-              results: (data?.organic_results || []).slice(0, 3).map(r => ({
-                name: r.title,
-                rating: r.rating,
-                reviews: r.reviews,
-                snippet: r.snippet,
-                categories: r.categories
-              })),
-              confidence: 'medium'
-            }
-          }).catch(() => { results.yelp = { source: 'Yelp', error: true } })
-        )
-      }
-    }
-
-    // 5. Facebook Profile -- if URL provided or search by name
-    if (facebookUrl) {
-      searches.push(
-        serpFetch({
-          engine: 'facebook_profile',
-          profile_url: facebookUrl
-        }).then(data => {
-          results.facebook = {
-            source: 'Facebook Profile',
-            profile: {
-              name: data?.name,
-              about: data?.about,
-              work: data?.work,
-              education: data?.education,
-              location: data?.location
-            },
-            confidence: 'medium'
-          }
-        }).catch(() => { results.facebook = { source: 'Facebook', error: true } })
-      )
-    } else {
-      // Search Facebook by name
+      // 5. Google Maps Reviews
       searches.push(
         serpFetch({
           engine: 'google',
-          q: `site:facebook.com "${fullName}" ${location}`,
-          num: 3
+          q: `"${businessName || fullName}" reviews site:google.com OR site:yelp.com OR site:bbb.org`,
+          num: 5
         }).then(data => {
-          results.facebook = {
-            source: 'Facebook (search)',
-            results: (data?.organic_results || []).slice(0, 2).map(r => ({
+          results.reviews = {
+            source: 'Business Reviews',
+            results: (data?.organic_results || []).slice(0, 4).map(r => ({
               title: r.title,
               snippet: r.snippet,
-              link: r.link
+              source: r.displayed_link,
+              rating: r.rich_snippet?.top?.detected_extensions?.rating
             })),
-            confidence: 'low',
-            note: 'Provide Facebook URL for deeper profile access'
+            confidence: 'medium'
           }
-        }).catch(() => { results.facebook = { source: 'Facebook', error: true } })
+        }).catch(() => { results.reviews = { source: 'Reviews', error: true } })
       )
     }
 
@@ -204,7 +178,7 @@ exports.handler = async (event) => {
     searches.push(
       serpFetch({
         engine: 'google_events',
-        q: `${fullName} ${location} event`,
+        q: `${fullName} ${location}`,
         hl: 'en'
       }).then(data => {
         results.events = {
@@ -212,12 +186,56 @@ exports.handler = async (event) => {
           events: (data?.events_results || []).slice(0, 3).map(e => ({
             title: e.title,
             date: e.date?.when,
-            address: e.address,
-            description: e.description?.substring(0, 200)
+            address: e.address?.[0],
+            description: e.description?.substring(0, 150)
           })),
           confidence: 'medium'
         }
       }).catch(() => { results.events = { source: 'Google Events', events: [] } })
+    )
+
+    // 7. Facebook Profile
+    searches.push(
+      serpFetch({
+        engine: 'google',
+        q: `site:facebook.com "${fullName}" ${location}`,
+        num: 3
+      }).then(data => {
+        results.facebook = {
+          source: 'Facebook (public)',
+          results: (data?.organic_results || []).slice(0, 2).map(r => ({
+            title: r.title,
+            snippet: r.snippet,
+            link: r.link
+          })),
+          confidence: 'low',
+          note: 'Public Facebook presence only'
+        }
+      }).catch(() => { results.facebook = { source: 'Facebook', error: true } })
+    )
+
+    // 8. YouTube -- thought leadership
+    searches.push(
+      serpFetch({
+        engine: 'youtube',
+        search_query: `${fullName} ${location} interview OR talk OR presentation`
+      }).then(data => {
+        const videos = data?.video_results || []
+        if (videos.length > 0) {
+          results.youtube = {
+            source: 'YouTube',
+            videos: videos.slice(0, 2).map(v => ({
+              title: v.title,
+              channel: v.channel?.name,
+              views: v.views,
+              date: v.published_date,
+              link: v.link
+            })),
+            confidence: 'high',
+            note: 'Public video appearances'
+          }
+        }
+      }).catch(() => {})
     )
 
     // Wait for all searches to complete
