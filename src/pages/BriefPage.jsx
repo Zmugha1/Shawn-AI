@@ -89,6 +89,7 @@ export default function BriefPage() {
   const ccap = prospect.scrapedData?.ccap
   const dfi = prospect.scrapedData?.dfi
   const rss = prospect.scrapedData?.rss
+  const firecrawl = prospect.scrapedData?.firecrawl
 
   return (
     <div>
@@ -109,8 +110,16 @@ export default function BriefPage() {
         <div className="source-bar fade-in">
           <span style={{ color: 'var(--teal)' }}>v</span>
           <span>Intelligence from:</span>
-          {ccap && <span style={{ fontFamily: 'Courier New', fontSize: 10, color: 'var(--teal)' }}>CCAP ({ccap.status})</span>}
-          {dfi && <span style={{ fontFamily: 'Courier New', fontSize: 10, color: 'var(--teal)' }}>DFI ({dfi.status})</span>}
+          {firecrawl?.ccap?.status === 'scraped'
+            ? <span style={{ fontFamily: 'Courier New', fontSize: 10, color: 'var(--teal)' }}>CCAP (Firecrawl verified)</span>
+            : ccap && <span style={{ fontFamily: 'Courier New', fontSize: 10, color: 'var(--teal)' }}>CCAP ({ccap.status})</span>
+          }
+          {firecrawl?.dfi?.status === 'scraped'
+            ? <span style={{ fontFamily: 'Courier New', fontSize: 10, color: 'var(--teal)' }}>DFI (Firecrawl verified)</span>
+            : dfi && <span style={{ fontFamily: 'Courier New', fontSize: 10, color: 'var(--teal)' }}>DFI ({dfi.status})</span>
+          }
+          {firecrawl?.company?.status === 'scraped' && <span style={{ fontFamily: 'Courier New', fontSize: 10, color: 'var(--teal)' }}>Company website (scraped)</span>}
+          {firecrawl?.webSearch?.results?.length > 0 && <span style={{ fontFamily: 'Courier New', fontSize: 10, color: 'var(--teal)' }}>Firecrawl search</span>}
           <span style={{ fontFamily: 'Courier New', fontSize: 10, color: 'var(--teal)' }}>Google + News + Maps</span>
           {rss?.totalMentions > 0 && <span style={{ fontFamily: 'Courier New', fontSize: 10, color: 'var(--teal)' }}>RSS ({rss.totalMentions} mentions)</span>}
           <span style={{ fontFamily: 'Courier New', fontSize: 10, color: 'var(--teal)' }}>STZ Layer</span>
