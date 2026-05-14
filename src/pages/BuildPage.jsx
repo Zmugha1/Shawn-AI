@@ -13,6 +13,7 @@ const STEPS = [
   { label: 'Scanning community events', src: 'SerpAPI -- Events', key: 'events' },
   { label: 'Reading Wisconsin RSS feeds', src: 'RSS -- Free', key: 'rss' },
   { label: 'Deep scraping court and business records', src: 'Firecrawl', key: 'firecrawl' },
+  { label: 'Searching unclaimed property, licenses, UCC filings', src: 'Wisconsin Public Records', key: 'wisconsin' },
   { label: 'Applying your 10 criteria', src: 'STZ Layer', key: 'stz' },
   { label: 'Generating your brief', src: 'Anthropic API', key: 'brief' }
 ]
@@ -165,13 +166,42 @@ export default function BuildPage() {
       setStep(10, 'error')
     }
 
-    // Step 11: STZ layer applied (local, instant)
+    // Wisconsin public intelligence sources
     setStep(11, 'active')
-    await new Promise(r => setTimeout(r, 600))
-    setStep(11, 'done')
+    try {
+      const nameParts2 = prospect.fullName.trim().split(' ')
+      const res = await fetch('https://shawnintel.netlify.app/.netlify/functions/scrape-wisconsin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: nameParts2[0],
+          lastName: nameParts2.slice(1).join(' ') || nameParts2[0],
+          fullName: prospect.fullName,
+          city: prospect.city,
+          businessName: prospect.businessName
+        })
+      })
+      if (!res.ok) {
+        scrapedData.wisconsin = {}
+        setStep(11, 'error')
+      } else {
+        const data = await res.json()
+        scrapedData.wisconsin = data.results || {}
+        setStep(11, 'done')
+      }
+    } catch (err) {
+      console.error('Wisconsin sources failed:', err.message)
+      scrapedData.wisconsin = {}
+      setStep(11, 'error')
+    }
 
-    // Step 12: Generate brief -- called directly from browser, no timeout limit
+    // Step 12: STZ layer applied (local, instant)
     setStep(12, 'active')
+    await new Promise(r => setTimeout(r, 600))
+    setStep(12, 'done')
+
+    // Step 13: Generate brief -- called directly from browser, no timeout limit
+    setStep(13, 'active')
     try {
       const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY
 
@@ -252,6 +282,57 @@ ${fc.webSearch.results.slice(0, 3).map(r =>
         }
       }
 
+      // Wisconsin public intelligence
+      if (scrapedData?.wisconsin) {
+        const wi = scrapedData.wisconsin
+
+        if (wi.unclaimedProperty?.data &&
+            wi.unclaimedProperty.data !== 'No unclaimed property found') {
+          contextParts.push(`WISCONSIN UNCLAIMED PROPERTY FOUND:
+${typeof wi.unclaimedProperty.data === 'string'
+  ? wi.unclaimedProperty.data
+  : JSON.stringify(wi.unclaimedProperty.data)}
+NOTE: This is money they may not know they have. Mention this in the meeting.`)
+        }
+
+        if (wi.propertyRecords?.data &&
+            wi.propertyRecords.data !== 'No property records found') {
+          contextParts.push(`WISCONSIN PROPERTY RECORDS:
+${typeof wi.propertyRecords.data === 'string'
+  ? wi.propertyRecords.data.substring(0, 600)
+  : JSON.stringify(wi.propertyRecords.data).substring(0, 600)}`)
+        }
+
+        if (wi.finraBrokerCheck?.status === 'found') {
+          contextParts.push(`FINRA BROKERCHECK:
+${JSON.stringify(wi.finraBrokerCheck.data).substring(0, 400)}
+NOTE: This person has securities industry history.`)
+        }
+
+        if (wi.professionalLicense?.data &&
+            wi.professionalLicense.data !== 'No professional licenses found') {
+          contextParts.push(`WISCONSIN PROFESSIONAL LICENSES:
+${typeof wi.professionalLicense.data === 'string'
+  ? wi.professionalLicense.data.substring(0, 400)
+  : JSON.stringify(wi.professionalLicense.data).substring(0, 400)}`)
+        }
+
+        if (wi.uccFilings?.data &&
+            wi.uccFilings.data !== 'No UCC filings found') {
+          contextParts.push(`UCC FILINGS (business leverage):
+${typeof wi.uccFilings.data === 'string'
+  ? wi.uccFilings.data.substring(0, 400)
+  : JSON.stringify(wi.uccFilings.data).substring(0, 400)}`)
+        }
+
+        if (wi.openCorporates?.officerRoles?.length > 0 ||
+            wi.openCorporates?.businessEntities?.length > 0) {
+          contextParts.push(`OPENCORPORATES BUSINESS ENTITIES:
+Officer roles: ${JSON.stringify(wi.openCorporates.officerRoles).substring(0, 300)}
+Business entities: ${JSON.stringify(wi.openCorporates.businessEntities).substring(0, 300)}`)
+        }
+      }
+
       const systemPrompt = `You are Shawn Intel, pre-meeting intelligence for Shawn, a CFP with 30 years experience in Wisconsin. Apply his 10 criteria. Be concise -- 2 sentences max per criterion.
 
 CRITERIA: 1.Comfort/Intent 2.Hidden Pain 3.Background/CCAP 4.Mutual Connections 5.Business Context 6.Family/Household 7.Decision Style 8.Right Analogy 9.What to Listen For 10.What Not to Assume
@@ -304,11 +385,11 @@ OUTPUT: Valid JSON only. No markdown. No extra text before or after.
       localStorage.setItem('prospects', JSON.stringify(savedProspects))
 
       clearInterval(timer)
-      setStep(12, 'done')
+      setStep(13, 'done')
       setTimeout(() => navigate(`/brief/${prospect.id}`), 600)
 
     } catch (err) {
-      setStep(12, 'error')
+      setStep(13, 'error')
       setError(err.message)
       clearInterval(timer)
     }
