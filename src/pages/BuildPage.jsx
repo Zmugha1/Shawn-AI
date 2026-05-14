@@ -371,6 +371,17 @@ ANALOGIES: Foundation(builders) | Specialist of Specialists(medical) | Kitchen P
 
 CFP ETHICS: No product recommendations. Flag uncertainty. Shawn reviews everything.
 
+MI LENS: Note change talk vs sustain talk in client descriptions.
+
+CRITICAL ACCURACY RULE:
+You ONLY use information explicitly provided in the context below.
+You NEVER invent, assume, or hallucinate details about a person.
+If a detail is not in the context, say "unknown -- verify with prospect."
+You NEVER describe someone as a weatherman, actor, athlete, or any 
+other profession unless that exact information appears in the context.
+If the context is thin, produce a thin brief with honest gaps flagged.
+A brief with honest gaps is better than a brief with invented details.
+
 OUTPUT: Valid JSON only. No markdown. No extra text before or after.
 {"archetype":"Business Owner Exit|Crisis Arrival|Information Seeker|The Cudahy Couple|Complex High Risk|Retirement Planning|Young Family|Other","archetypeRisk":"low|medium|high","ccapSummary":"one sentence","criteria":[{"n":"01","label":"Comfort and Intent","flag":"clear|watch|alert","flagText":"label","body":"2 sentences","source":"source"}],"grader":[{"label":"Net Worth Trajectory","value":50,"color":"green|amber|coral","badge":"short"},{"label":"Decision Timeline","value":50,"color":"green|amber|coral","badge":"short"},{"label":"Relationship Complexity","value":50,"color":"green|amber|coral","badge":"short"}],"analogy":{"rec":"name","recWhy":"one sentence","back":"name","backWhy":"when","avoid":"name","avoidWhy":"why"},"openingQuestion":"one question","hiddenPain":"one sentence","dataGaps":["gap1","gap2","gap3"]}`
 
