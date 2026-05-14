@@ -128,7 +128,7 @@ export default function BuildPage() {
     // Step 8: Generate brief
     setStep(8, 'active')
     try {
-      const res = await fetch('/.netlify/functions/generate-brief', {
+      const res = await fetch('/.netlify/functions/generate-brief-background', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prospect, scrapedData })
