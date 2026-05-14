@@ -12,6 +12,7 @@ const STEPS = [
   { label: 'Checking YouTube presence', src: 'SerpAPI -- YouTube', key: 'youtube' },
   { label: 'Scanning community events', src: 'SerpAPI -- Events', key: 'events' },
   { label: 'Reading Wisconsin RSS feeds', src: 'RSS -- Free', key: 'rss' },
+  { label: 'Deep scraping court and business records', src: 'Firecrawl', key: 'firecrawl' },
   { label: 'Applying your 10 criteria', src: 'STZ Layer', key: 'stz' },
   { label: 'Generating your brief', src: 'Anthropic API', key: 'brief' }
 ]
@@ -132,13 +133,37 @@ export default function BuildPage() {
       setStep(9, 'done')
     } catch { setStep(9, 'error'); scrapedData.rss = null }
 
-    // Step 10: STZ layer applied (local, instant)
+    // Step 6b: Firecrawl deep scrape
     setStep(10, 'active')
-    await new Promise(r => setTimeout(r, 600))
-    setStep(10, 'done')
+    try {
+      const nameParts = prospect.fullName.trim().split(' ')
+      const res = await fetch('https://shawnintel.netlify.app/.netlify/functions/scrape-firecrawl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: nameParts[0],
+          lastName: nameParts.slice(1).join(' '),
+          fullName: prospect.fullName,
+          businessName: prospect.businessName,
+          linkedinUrl: prospect.linkedinUrl,
+          companyUrl: prospect.companyUrl
+        })
+      })
+      const data = await res.json()
+      scrapedData.firecrawl = data.results || {}
+      setStep(10, 'done')
+    } catch {
+      scrapedData.firecrawl = {}
+      setStep(10, 'done')
+    }
 
-    // Step 11: Generate brief -- called directly from browser, no timeout limit
+    // Step 11: STZ layer applied (local, instant)
     setStep(11, 'active')
+    await new Promise(r => setTimeout(r, 600))
+    setStep(11, 'done')
+
+    // Step 12: Generate brief -- called directly from browser, no timeout limit
+    setStep(12, 'active')
     try {
       const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY
 
@@ -227,11 +252,11 @@ OUTPUT: Valid JSON only. No markdown. No extra text before or after.
       localStorage.setItem('prospects', JSON.stringify(savedProspects))
 
       clearInterval(timer)
-      setStep(11, 'done')
+      setStep(12, 'done')
       setTimeout(() => navigate(`/brief/${prospect.id}`), 600)
 
     } catch (err) {
-      setStep(11, 'error')
+      setStep(12, 'error')
       setError(err.message)
       clearInterval(timer)
     }
