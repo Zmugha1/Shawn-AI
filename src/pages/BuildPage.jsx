@@ -125,30 +125,97 @@ export default function BuildPage() {
     await new Promise(r => setTimeout(r, 600))
     setStep(7, 'done')
 
-    // Step 8: Generate brief
+    // Step 8: Generate brief -- called directly from browser, no timeout limit
     setStep(8, 'active')
     try {
-      const res = await fetch('/.netlify/functions/generate-brief-background', {
+      const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY
+
+      if (!ANTHROPIC_KEY) {
+        throw new Error('VITE_ANTHROPIC_API_KEY not configured in Netlify environment variables')
+      }
+
+      const nameParts2 = prospect.fullName.trim().split(' ')
+      const contextParts = []
+
+      contextParts.push(`PROSPECT: ${prospect.fullName}, ${prospect.city || 'Wisconsin'}
+Referral: ${prospect.referral || 'Not provided'}
+Why coming: ${prospect.whyComing || 'Not provided'}
+Shawn knows: ${prospect.shawnNotes || 'Not provided'}
+Business: ${prospect.businessName || 'Not provided'}`)
+
+      if (scrapedData?.ccap) {
+        contextParts.push(`CCAP: ${scrapedData.ccap.status}. Cases: ${scrapedData.ccap.totalCases || 0}. ${scrapedData.ccap.cases?.slice(0,2).map(c => c.caseType + ' ' + c.fileDate + ' ' + c.status).join(', ') || 'None'}`)
+      }
+
+      if (scrapedData?.serp?.results?.google?.organicResults?.length > 0) {
+        contextParts.push(`GOOGLE: ${scrapedData.serp.results.google.organicResults.slice(0,3).map(r => r.title + ': ' + r.snippet).join(' | ')}`)
+      }
+
+      if (scrapedData?.serp?.results?.news?.articles?.length > 0) {
+        contextParts.push(`NEWS: ${scrapedData.serp.results.news.articles.slice(0,2).map(a => a.title).join(' | ')}`)
+      }
+
+      if (scrapedData?.serp?.results?.maps?.businesses?.length > 0) {
+        contextParts.push(`MAPS: ${scrapedData.serp.results.maps.businesses.slice(0,2).map(b => b.title + ' ' + (b.rating || '') + ' stars').join(' | ')}`)
+      }
+
+      if (scrapedData?.rss?.mentions?.length > 0) {
+        contextParts.push(`RSS: ${scrapedData.rss.mentions.slice(0,2).map(m => m.feedName + ': ' + m.matches[0]?.title).join(' | ')}`)
+      }
+
+      const systemPrompt = `You are Shawn Intel, pre-meeting intelligence for Shawn, a CFP with 30 years experience in Wisconsin. Apply his 10 criteria. Be concise -- 2 sentences max per criterion.
+
+CRITERIA: 1.Comfort/Intent 2.Hidden Pain 3.Background/CCAP 4.Mutual Connections 5.Business Context 6.Family/Household 7.Decision Style 8.Right Analogy 9.What to Listen For 10.What Not to Assume
+
+ANALOGIES: Foundation(builders) | Specialist of Specialists(medical) | Kitchen Prep(restaurants) | Business Plan(sales/exec) | Grandmother's Buick(retirees 65+) | GP Coordinates(skeptics)
+
+CFP ETHICS: No product recommendations. Flag uncertainty. Shawn reviews everything.
+
+OUTPUT: Valid JSON only. No markdown. No extra text before or after.
+{"archetype":"Business Owner Exit|Crisis Arrival|Information Seeker|The Cudahy Couple|Complex High Risk|Retirement Planning|Young Family|Other","archetypeRisk":"low|medium|high","ccapSummary":"one sentence","criteria":[{"n":"01","label":"Comfort and Intent","flag":"clear|watch|alert","flagText":"label","body":"2 sentences","source":"source"}],"grader":[{"label":"Net Worth Trajectory","value":50,"color":"green|amber|coral","badge":"short"},{"label":"Decision Timeline","value":50,"color":"green|amber|coral","badge":"short"},{"label":"Relationship Complexity","value":50,"color":"green|amber|coral","badge":"short"}],"analogy":{"rec":"name","recWhy":"one sentence","back":"name","backWhy":"when","avoid":"name","avoidWhy":"why"},"openingQuestion":"one question","hiddenPain":"one sentence","dataGaps":["gap1","gap2","gap3"]}`
+
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prospect, scrapedData })
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': ANTHROPIC_KEY,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 2000,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: contextParts.join('\n\n') }]
+        })
       })
-      const result = await res.json()
 
-      if (result.error) throw new Error(result.error)
+      if (!response.ok) {
+        const errText = await response.text()
+        throw new Error(`Anthropic error ${response.status}: ${errText}`)
+      }
 
-      // Save everything to localStorage
+      const data = await response.json()
+      const rawText = data.content?.[0]?.text || '{}'
+
+      let brief
+      try {
+        brief = JSON.parse(rawText)
+      } catch {
+        const match = rawText.match(/\{[\s\S]*\}/)
+        if (match) brief = JSON.parse(match[0])
+        else throw new Error('Could not parse brief from response')
+      }
+
       const savedProspects = JSON.parse(localStorage.getItem('prospects') || '[]')
       const idx = savedProspects.findIndex(p => p.id === prospect.id)
       if (idx >= 0) {
-        savedProspects[idx] = { ...savedProspects[idx], scrapedData, brief: result.brief, briefGeneratedAt: new Date().toISOString() }
+        savedProspects[idx] = { ...savedProspects[idx], scrapedData, brief, briefGeneratedAt: new Date().toISOString() }
       }
       localStorage.setItem('prospects', JSON.stringify(savedProspects))
 
       clearInterval(timer)
       setStep(8, 'done')
-
-      // Navigate to brief
       setTimeout(() => navigate(`/brief/${prospect.id}`), 600)
 
     } catch (err) {
