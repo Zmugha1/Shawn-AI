@@ -275,10 +275,40 @@ ${companyText.substring(0, 800)}`)
         }
 
         if (fc.webSearch?.results?.length > 0) {
-          contextParts.push(`FIRECRAWL WEB SEARCH RESULTS:
-${fc.webSearch.results.slice(0, 3).map(r =>
-  `  - ${r.title}: ${r.description || r.content || ''}`
-).join('\n')}`)
+          const byCategory = {}
+          fc.webSearch.results.forEach(r => {
+            if (!byCategory[r.searchCategory]) byCategory[r.searchCategory] = []
+            byCategory[r.searchCategory].push(r)
+          })
+          const webContext = Object.entries(byCategory).map(([cat, items]) =>
+            `  ${cat}: ${items.slice(0,2).map(r => r.title + ' -- ' + (r.description || r.content || '')).join(' | ')}`
+          ).join('\n')
+          contextParts.push(`DEEP WEB SEARCH RESULTS BY CATEGORY:
+${webContext}`)
+        }
+
+        if (fc.imdb?.status === 'found') {
+          contextParts.push(`IMDB PROFILE FOUND:
+${typeof fc.imdb.data === 'string' ? fc.imdb.data.substring(0, 400) : JSON.stringify(fc.imdb.data).substring(0, 400)}
+NOTE: This person has entertainment industry credits. Use this as a conversation opener.`)
+        }
+
+        if (fc.fineArt?.status === 'found') {
+          contextParts.push(`FINE ART / PHOTOGRAPHY PROFILE:
+${typeof fc.fineArt.data === 'string' ? fc.fineArt.data.substring(0, 400) : JSON.stringify(fc.fineArt.data).substring(0, 400)}
+NOTE: This person creates and sells art or photography. Personal passion -- powerful conversation opener.`)
+        }
+
+        if (fc.facebookDeep?.status === 'scraped') {
+          contextParts.push(`FACEBOOK PROFILE DEEP DATA:
+${fc.facebookDeep.data}
+NOTE: Contains family details, hobbies, life events. Use carefully and naturally.`)
+        }
+
+        if (fc.facultyBio?.status === 'scraped') {
+          contextParts.push(`UNIVERSITY FACULTY BIO:
+${fc.facultyBio.data}
+NOTE: Full academic background. Contains professional history before academia.`)
         }
       }
 
