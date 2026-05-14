@@ -25,6 +25,8 @@ exports.handler = async (event) => {
 
   try {
     const { firstName, lastName, fullName, businessName, linkedinUrl, companyUrl } = JSON.parse(event.body || '{}')
+    // Clean businessName -- strip URLs if accidentally passed
+    const cleanBusinessName = businessName && !businessName.startsWith('http') ? businessName : null
 
     const results = {}
 
@@ -97,8 +99,8 @@ exports.handler = async (event) => {
     }
 
     // Wisconsin DFI -- business records
-    if (businessName || fullName) {
-      const searchTerm = businessName || fullName
+    if (cleanBusinessName || fullName) {
+      const searchTerm = cleanBusinessName || fullName
       tasks.push(
         firecrawlScrape(
           `https://wdfi.org/apps/corpsearch/search.aspx?q=${encodeURIComponent(searchTerm)}&type=Simple`,

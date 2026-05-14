@@ -112,6 +112,39 @@ ${scrapedData.rss.mentions.map(m =>
 ).join('\n')}`)
     }
 
+    // Firecrawl deep scrape results
+    if (scrapedData?.firecrawl) {
+      const fc = scrapedData.firecrawl
+
+      if (fc.ccap?.data && fc.ccap.data !== 'No records found') {
+        contextParts.push(`CCAP COURT RECORDS (Firecrawl verified):
+${typeof fc.ccap.data === 'string' ? fc.ccap.data : JSON.stringify(fc.ccap.data)}
+Confidence: ${fc.ccap.confidence}`)
+      } else if (fc.ccap?.status === 'scraped') {
+        contextParts.push(`CCAP COURT RECORDS: No court records found for this person. Verified clean.`)
+      }
+
+      if (fc.dfi?.data && fc.dfi.data !== 'No entities found') {
+        contextParts.push(`WISCONSIN DFI BUSINESS RECORDS (Firecrawl verified):
+${typeof fc.dfi.data === 'string' ? fc.dfi.data : JSON.stringify(fc.dfi.data)}`)
+      }
+
+      if (fc.linkedin?.data) {
+        contextParts.push(`LINKEDIN PROFILE (full):
+${typeof fc.linkedin.data === 'string' ? fc.linkedin.data.substring(0, 800) : JSON.stringify(fc.linkedin.data).substring(0, 800)}`)
+      }
+
+      if (fc.company?.data) {
+        contextParts.push(`COMPANY WEBSITE (full content):
+${typeof fc.company.data === 'string' ? fc.company.data.substring(0, 800) : JSON.stringify(fc.company.data).substring(0, 800)}`)
+      }
+
+      if (fc.webSearch?.results?.length > 0) {
+        contextParts.push(`FIRECRAWL WEB SEARCH:
+${fc.webSearch.results.slice(0, 3).map(r => `  - ${r.title}: ${r.description || r.content || ''}`).join('\n')}`)
+      }
+    }
+
     const fullContext = contextParts.join('\n\n')
 
     const systemPrompt = `You are Shawn Intel, pre-meeting intelligence for Shawn, a CFP with 30 years experience in Wisconsin.
