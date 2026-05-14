@@ -208,6 +208,50 @@ Business: ${prospect.businessName || 'Not provided'}`)
         contextParts.push(`RSS: ${scrapedData.rss.mentions.slice(0,2).map(m => m.feedName + ': ' + m.matches[0]?.title).join(' | ')}`)
       }
 
+      // Firecrawl verified data
+      if (scrapedData?.firecrawl) {
+        const fc = scrapedData.firecrawl
+
+        if (fc.ccap?.status === 'scraped') {
+          const ccapText = typeof fc.ccap.data === 'string'
+            ? fc.ccap.data
+            : JSON.stringify(fc.ccap.data)
+          contextParts.push(`CCAP COURT RECORDS (Firecrawl verified -- high confidence):
+${ccapText.substring(0, 600)}`)
+        }
+
+        if (fc.dfi?.status === 'scraped') {
+          const dfiText = typeof fc.dfi.data === 'string'
+            ? fc.dfi.data
+            : JSON.stringify(fc.dfi.data)
+          contextParts.push(`WISCONSIN DFI BUSINESS RECORDS (Firecrawl verified):
+${dfiText.substring(0, 400)}`)
+        }
+
+        if (fc.linkedin?.status === 'scraped' && fc.linkedin.data) {
+          const linkedinText = typeof fc.linkedin.data === 'string'
+            ? fc.linkedin.data
+            : JSON.stringify(fc.linkedin.data)
+          contextParts.push(`LINKEDIN PROFILE (full -- high confidence):
+${linkedinText.substring(0, 800)}`)
+        }
+
+        if (fc.company?.status === 'scraped' && fc.company.data) {
+          const companyText = typeof fc.company.data === 'string'
+            ? fc.company.data
+            : JSON.stringify(fc.company.data)
+          contextParts.push(`COMPANY WEBSITE (full content):
+${companyText.substring(0, 800)}`)
+        }
+
+        if (fc.webSearch?.results?.length > 0) {
+          contextParts.push(`FIRECRAWL WEB SEARCH RESULTS:
+${fc.webSearch.results.slice(0, 3).map(r =>
+  `  - ${r.title}: ${r.description || r.content || ''}`
+).join('\n')}`)
+        }
+      }
+
       const systemPrompt = `You are Shawn Intel, pre-meeting intelligence for Shawn, a CFP with 30 years experience in Wisconsin. Apply his 10 criteria. Be concise -- 2 sentences max per criterion.
 
 CRITERIA: 1.Comfort/Intent 2.Hidden Pain 3.Background/CCAP 4.Mutual Connections 5.Business Context 6.Family/Household 7.Decision Style 8.Right Analogy 9.What to Listen For 10.What Not to Assume
