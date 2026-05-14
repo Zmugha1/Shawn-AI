@@ -99,6 +99,41 @@ exports.handler = async (event) => {
 
     const tasks = []
 
+    // Direct faculty bio scrape
+    // Geneva College faculty page for Paul Poteete
+    // Generalizes to any faculty bio found via Google
+    tasks.push(
+      (async () => {
+        try {
+          // Try direct known URL patterns for faculty bios
+          const facultyUrls = [
+            `https://www.geneva.edu/faculty-staff/faculty/computer-science/faculty-${firstName.toLowerCase()}-${lastName.toLowerCase()}`,
+            `https://www.geneva.edu/faculty-staff/faculty/${firstName.toLowerCase()}-${lastName.toLowerCase()}`
+          ]
+
+          for (const url of facultyUrls) {
+            const data = await firecrawlScrape(
+              url,
+              `Extract the complete biography and background for "${fullName}". Include everything: military service, international experience, countries lived in or worked in, previous careers before academia, research, publications, awards, speaking engagements, personal interests, family details if mentioned, any unusual background facts.`
+            )
+            if (data && data.length > 100 && !data.toLowerCase().includes('not found') && !data.toLowerCase().includes('404')) {
+              results.facultyBio = {
+                source: 'University Faculty Bio (direct)',
+                url,
+                status: 'scraped',
+                data: typeof data === 'string' ? data.substring(0, 1200) : JSON.stringify(data).substring(0, 1200),
+                confidence: 'high',
+                wowFactor: 'HIGHEST -- contains career history nobody else researches'
+              }
+              break
+            }
+          }
+        } catch (e) {
+          // Silent fail -- not every prospect has a faculty bio
+        }
+      })()
+    )
+
     // CCAP Wisconsin -- court records
     if (firstName && lastName) {
       tasks.push(

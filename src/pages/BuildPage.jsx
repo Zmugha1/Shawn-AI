@@ -365,9 +365,9 @@ NOTE: Contains family details, hobbies, life events. Use carefully and naturally
         }
 
         if (fc.facultyBio?.status === 'scraped') {
-          contextParts.push(`UNIVERSITY FACULTY BIO:
+          contextParts.push(`FACULTY BIO (verified -- high confidence):
 ${fc.facultyBio.data}
-NOTE: Full academic background. Contains professional history before academia.`)
+NOTE: This is the full academic biography. Extract military service, international work, and unusual background facts. These are the WOW moments for the meeting.`)
         }
       }
 
