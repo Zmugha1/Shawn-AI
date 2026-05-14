@@ -7,6 +7,13 @@ export function ProspectsPage() {
   const navigate = useNavigate()
   const [prospects, setProspects] = useState([])
 
+  const clearAllProspects = () => {
+    if (window.confirm('Clear all prospects? This cannot be undone.')) {
+      localStorage.removeItem('prospects')
+      setProspects([])
+    }
+  }
+
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem('prospects') || '[]')
     setProspects(stored)
@@ -21,7 +28,10 @@ export function ProspectsPage() {
           <h2>My Prospects</h2>
           <div className="page-sub">{prospects.length} prospect{prospects.length !== 1 ? 's' : ''} -- click any card to view their brief</div>
         </div>
-        <button className="btn btn-primary" onClick={() => navigate('/new')}>+ New Prospect</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-primary" onClick={() => navigate('/new')}>+ New Prospect</button>
+          <button className="btn btn-outline" onClick={clearAllProspects}>Clear All</button>
+        </div>
       </div>
 
       <div className="page-content">
