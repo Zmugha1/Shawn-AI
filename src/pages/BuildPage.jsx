@@ -149,12 +149,20 @@ export default function BuildPage() {
           companyUrl: prospect.companyUrl
         })
       })
-      const data = await res.json()
-      scrapedData.firecrawl = data.results || {}
-      setStep(10, 'done')
-    } catch {
-      scrapedData.firecrawl = {}
-      setStep(10, 'done')
+      if (!res.ok) {
+        const errText = await res.text()
+        console.error('Firecrawl function error:', res.status, errText)
+        scrapedData.firecrawl = { error: `HTTP ${res.status}: ${errText.substring(0, 200)}` }
+        setStep(10, 'error')
+      } else {
+        const data = await res.json()
+        scrapedData.firecrawl = data.results || {}
+        setStep(10, 'done')
+      }
+    } catch (err) {
+      console.error('Firecrawl fetch failed:', err.message)
+      scrapedData.firecrawl = { error: err.message }
+      setStep(10, 'error')
     }
 
     // Step 11: STZ layer applied (local, instant)
