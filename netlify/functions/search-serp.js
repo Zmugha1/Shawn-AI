@@ -238,6 +238,146 @@ exports.handler = async (event) => {
       }).catch(() => {})
     )
 
+    // Deep person research -- targeted site searches
+    // Step 1: Find their faculty bio page
+    searches.push(
+      serpFetch({
+        engine: 'google',
+        q: `"${fullName}" faculty professor bio`,
+        num: 5
+      }).then(async data => {
+        const eduResults = (data?.organic_results || [])
+          .filter(r => r.link && (r.link.includes('.edu') || r.link.includes('faculty') || r.link.includes('professor')))
+          .slice(0, 2)
+        if (eduResults.length > 0) {
+          results.facultyBio = {
+            source: 'University Faculty Bio',
+            results: eduResults.map(r => ({
+              title: r.title,
+              link: r.link,
+              snippet: r.snippet
+            })),
+            confidence: 'high'
+          }
+        }
+      }).catch(() => {})
+    )
+
+    // Step 2: Find Fine Art America profile
+    searches.push(
+      serpFetch({
+        engine: 'google',
+        q: `"${fullName}" site:fineartamerica.com`,
+        num: 3
+      }).then(data => {
+        const faaResults = (data?.organic_results || []).slice(0, 2)
+        if (faaResults.length > 0) {
+          results.fineArt = {
+            source: 'Fine Art America',
+            results: faaResults.map(r => ({
+              title: r.title,
+              link: r.link,
+              snippet: r.snippet
+            })),
+            confidence: 'high',
+            wowFactor: 'Reveals personal creative passion'
+          }
+        }
+      }).catch(() => {})
+    )
+
+    // Step 3: IMDB presence
+    searches.push(
+      serpFetch({
+        engine: 'google',
+        q: `"${fullName}" site:imdb.com`,
+        num: 3
+      }).then(data => {
+        const imdbResults = (data?.organic_results || []).slice(0, 2)
+        if (imdbResults.length > 0) {
+          results.imdb = {
+            source: 'IMDB',
+            results: imdbResults.map(r => ({
+              title: r.title,
+              link: r.link,
+              snippet: r.snippet
+            })),
+            confidence: 'high',
+            wowFactor: 'Entertainment industry credits -- unexpected angle'
+          }
+        }
+      }).catch(() => {})
+    )
+
+    // Step 4: Military and government service
+    searches.push(
+      serpFetch({
+        engine: 'google',
+        q: `"${fullName}" military navy army veteran defense government`,
+        num: 5
+      }).then(data => {
+        const milResults = (data?.organic_results || []).slice(0, 3)
+        if (milResults.length > 0) {
+          results.military = {
+            source: 'Military and Government Service',
+            results: milResults.map(r => ({
+              title: r.title,
+              link: r.link,
+              snippet: r.snippet
+            })),
+            confidence: 'medium',
+            wowFactor: 'Military background creates instant respect and connection'
+          }
+        }
+      }).catch(() => {})
+    )
+
+    // Step 5: International background
+    searches.push(
+      serpFetch({
+        engine: 'google',
+        q: `"${fullName}" international abroad overseas lived worked`,
+        num: 5
+      }).then(data => {
+        const intlResults = (data?.organic_results || []).slice(0, 3)
+        if (intlResults.length > 0) {
+          results.international = {
+            source: 'International Background',
+            results: intlResults.map(r => ({
+              title: r.title,
+              link: r.link,
+              snippet: r.snippet
+            })),
+            confidence: 'medium',
+            wowFactor: 'International experience signals global perspective'
+          }
+        }
+      }).catch(() => {})
+    )
+
+    // Step 6: Speaking and media appearances
+    searches.push(
+      serpFetch({
+        engine: 'google',
+        q: `"${fullName}" speaker conference interview podcast presentation`,
+        num: 5
+      }).then(data => {
+        const speakResults = (data?.organic_results || []).slice(0, 3)
+        if (speakResults.length > 0) {
+          results.speaking = {
+            source: 'Speaking and Media',
+            results: speakResults.map(r => ({
+              title: r.title,
+              link: r.link,
+              snippet: r.snippet
+            })),
+            confidence: 'medium',
+            wowFactor: 'Thought leadership signals credibility and ambition'
+          }
+        }
+      }).catch(() => {})
+    )
+
     // Wait for all searches to complete
     await Promise.allSettled(searches)
 

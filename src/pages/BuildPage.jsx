@@ -262,6 +262,37 @@ Business: ${prospect.businessName || 'Not provided'}`)
         contextParts.push(`MAPS: ${scrapedData.serp.results.maps.businesses.slice(0,2).map(b => b.title + ' ' + (b.rating || '') + ' stars').join(' | ')}`)
       }
 
+      // Deep person research from targeted searches
+      const serpDeep = scrapedData?.serp?.results
+      if (serpDeep?.facultyBio?.results?.length > 0) {
+        contextParts.push(`FACULTY BIO FOUND:
+${serpDeep.facultyBio.results.map(r => r.title + ': ' + r.snippet + ' (' + r.link + ')').join('\n')}
+NOTE: Read the full bio at the link above for complete background.`)
+      }
+      if (serpDeep?.fineArt?.results?.length > 0) {
+        contextParts.push(`FINE ART AMERICA PROFILE:
+${serpDeep.fineArt.results.map(r => r.title + ': ' + r.snippet).join('\n')}
+NOTE: This person creates and sells art or photography. Powerful personal conversation opener.`)
+      }
+      if (serpDeep?.imdb?.results?.length > 0) {
+        contextParts.push(`IMDB PROFILE FOUND:
+${serpDeep.imdb.results.map(r => r.title + ': ' + r.snippet).join('\n')}
+NOTE: Entertainment industry presence. Unexpected angle that creates memorable connection.`)
+      }
+      if (serpDeep?.military?.results?.length > 0) {
+        contextParts.push(`MILITARY AND GOVERNMENT BACKGROUND:
+${serpDeep.military.results.map(r => r.title + ': ' + r.snippet).join('\n')}
+NOTE: Military service creates immediate respect. Reference carefully and with appreciation.`)
+      }
+      if (serpDeep?.international?.results?.length > 0) {
+        contextParts.push(`INTERNATIONAL BACKGROUND:
+${serpDeep.international.results.map(r => r.title + ': ' + r.snippet).join('\n')}`)
+      }
+      if (serpDeep?.speaking?.results?.length > 0) {
+        contextParts.push(`SPEAKING AND MEDIA APPEARANCES:
+${serpDeep.speaking.results.map(r => r.title + ': ' + r.snippet).join('\n')}`)
+      }
+
       if (scrapedData?.rss?.mentions?.length > 0) {
         contextParts.push(`RSS: ${scrapedData.rss.mentions.slice(0,2).map(m => m.feedName + ': ' + m.matches[0]?.title).join(' | ')}`)
       }
