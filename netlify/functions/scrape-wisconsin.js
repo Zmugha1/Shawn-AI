@@ -21,7 +21,24 @@ exports.handler = async (event) => {
   const FIRECRAWL_KEY = process.env.FIRECRAWL_API_KEY
 
   try {
-    const { firstName, lastName, fullName, city, businessName } = JSON.parse(event.body || '{}')
+    const rawWi = JSON.parse(event.body || '{}')
+
+    // Clean name -- strip titles and suffixes
+    const stripTitlesWi = (name) => {
+      if (!name) return name
+      return name
+        .replace(/\b(Dr|Dr\.|PhD|Ph\.D|Ph\.D\.|MD|M\.D|JD|J\.D|Esq|Sr|Jr|II|III|IV|CPA|CFP|MBA|MS|MA|BS|BA)\b\.?/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+    }
+
+    const fullName = stripTitlesWi(rawWi.fullName)
+    const city = rawWi.city
+    const businessName = rawWi.businessName && !rawWi.businessName.startsWith('http') ? rawWi.businessName : null
+
+    const namePartsWi = fullName.trim().split(' ')
+    const firstName = namePartsWi[0]
+    const lastName = namePartsWi.slice(1).join(' ') || namePartsWi[0]
 
     if (!firstName || !lastName) {
       return {

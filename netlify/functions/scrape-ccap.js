@@ -14,7 +14,20 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { firstName, lastName } = JSON.parse(event.body || '{}')
+    const rawCcap = JSON.parse(event.body || '{}')
+
+    const stripTitlesCcap = (name) => {
+      if (!name) return name
+      return name
+        .replace(/\b(Dr|Dr\.|PhD|Ph\.D|Ph\.D\.|MD|M\.D|JD|J\.D|Esq|Sr|Jr|II|III|IV|CPA|CFP|MBA|MS|MA|BS|BA)\b\.?/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+    }
+
+    const cleanFirst = stripTitlesCcap(rawCcap.firstName || '')
+    const cleanLast = stripTitlesCcap(rawCcap.lastName || '')
+    const firstName = cleanFirst
+    const lastName = cleanLast
 
     if (!firstName || !lastName) {
       return {

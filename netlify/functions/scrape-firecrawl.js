@@ -24,9 +24,27 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { firstName, lastName, fullName, businessName, linkedinUrl, companyUrl, facebookUrl } = JSON.parse(event.body || '{}')
-    // Clean businessName -- strip URLs if accidentally passed
-    const cleanBusinessName = businessName && !businessName.startsWith('http') ? businessName : null
+    const raw = JSON.parse(event.body || '{}')
+
+    // Clean name -- strip titles and suffixes before any search
+    const stripTitles = (name) => {
+      if (!name) return name
+      return name
+        .replace(/\b(Dr|Dr\.|PhD|Ph\.D|Ph\.D\.|MD|M\.D|JD|J\.D|Esq|Sr|Jr|II|III|IV|CPA|CFP|MBA|MS|MA|BS|BA)\b\.?/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+    }
+
+    const fullName = stripTitles(raw.fullName)
+    const businessName = raw.businessName && !raw.businessName.startsWith('http') ? raw.businessName : null
+    const linkedinUrl = raw.linkedinUrl
+    const companyUrl = raw.companyUrl
+    const facebookUrl = raw.facebookUrl
+
+    // Split cleaned full name into first and last
+    const nameParts = fullName.trim().split(' ')
+    const firstName = nameParts[0]
+    const lastName = nameParts.slice(1).join(' ') || nameParts[0]
 
     const results = {}
 
@@ -99,8 +117,8 @@ exports.handler = async (event) => {
     }
 
     // Wisconsin DFI -- business records
-    if (cleanBusinessName || fullName) {
-      const searchTerm = cleanBusinessName || fullName
+    if (businessName || fullName) {
+      const searchTerm = businessName || fullName
       tasks.push(
         firecrawlScrape(
           `https://wdfi.org/apps/corpsearch/search.aspx?q=${encodeURIComponent(searchTerm)}&type=Simple`,
